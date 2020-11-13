@@ -1,20 +1,23 @@
 # %%
 from __future__ import print_function, division
-import os
-import torch
-import pandas as pd
-import pickle
 from skimage import io, transform
-import numpy as np
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
+from torch.utils.tensorboard import SummaryWriter
 from read_images import read_images
 
-# Ignore warnings
+import os
+import torch
+import torchvision
+import random
+import pandas as pd
+import pickle
+import numpy as np
+import matplotlib.pyplot as plt
+import torch.optim as optim
 import warnings
-warnings.filterwarnings("ignore")
 
+warnings.filterwarnings("ignore")
 plt.ion()   # interactive mode
 
 is_store_data = False
@@ -223,7 +226,7 @@ class Net(nn.Module):
 
 net = Net().double()
 # %%
-import torch.optim as optim
+
 
 criterion = nn.CrossEntropyLoss()
 #optimizer = optim.SGD(net.parameters(), lr=0.0001, momentum=0.9)
@@ -266,9 +269,8 @@ len(img_list)
 plt.plot(loss_capture)
 
 
-# %%
-from torch.utils.tensorboard import SummaryWriter
-
+# %% Tensorboard
+ 
 # default `log_dir` is "runs" - we'll be more specific here
 writer = SummaryWriter('runs/logos_10_class_exp_1')
 # %%
@@ -280,7 +282,7 @@ batch_tb = dataiter.next()
 len(batch_tb['image'])
 # %%
 
-import torchvision
+
 # create grid of images
 img_grid = torchvision.utils.make_grid(batch_tb['image'])
 
@@ -305,7 +307,7 @@ writer.add_graph(net.float(), batch_tb['image'])
 ## Needs Change
 # %%
 # 100 Random Images
-import random
+
 n_images = 24
 max_range = len(img_list)
 img_group = []
