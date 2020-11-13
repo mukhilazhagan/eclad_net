@@ -27,6 +27,8 @@ if is_read_data:
     img_list, class_list = read_images()
 
 # %%
+class_list
+# %%
 # Converting classes to onehotencoding
 class_set = set(class_list)
 class_int = [x for x in range(0,len(class_set))]
@@ -164,21 +166,10 @@ class ToTensor(object):
                 'class_name': torch.tensor(class_name)}
         
 # %%
-#logos_dataset = Logo_Dataset(img_list, class_list)
-transformed_dataset = Logo_Dataset(img_list, class_list  , transform = transforms.Compose([Rescale(128), ToTensor()]))
-#%%
+transformed_dataset = Logo_Dataset(img_list, class_list  , transform = transforms.Compose([Rescale(32), ToTensor()]))
 dataloader = DataLoader(transformed_dataset, batch_size=4,
                         shuffle=True, num_workers=0)
 
-# %%  Debug DataLoad Batches
-for i_batch, sample_batched in enumerate(dataloader):
-    print(i_batch)
-    print(sample_batched['image'].shape)
-    print(sample_batched['image'].dtype)
-    print(sample_batched['class_name'].dtype)
-    plt.imshow(sample_batched['image'][0].numpy().transpose((1, 2, 0)))
-    plt.imshow(sample_batched['image'][2].numpy().transpose((1, 2, 0)))
-    break
 
 # %% Visualize Random Samples
 dataiter = iter(dataloader)
@@ -200,56 +191,36 @@ class Net(nn.Module):
         self.conv1 = nn.Conv2d(3, 6, 5)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(6, 16, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv3 = nn.Conv2d(16, 32, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv4 = nn.Conv2d(32, 64, 5)
-        #self.fc1 = nn.Linear(64 * 5 * 5, 400)
-        self.fc1 = nn.Linear(1024, 512)
-        self.fc2 = nn.Linear(512, 128)
-        self.fc3 = nn.Linear(128, 32)
-        self.fc4 = nn.Linear(32, 10)
+        self.pool2 = nn.MaxPool2d(2, 2)
+        self.fc1 = nn.Linear(16*5*5, 32)
+        self.fc2 = nn.Linear(32, 2)
     
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = self.pool(F.relu(self.conv3(x)))
-        x = self.pool(F.relu(self.conv4(x)))
-        #x = x.view(-1, 64 * 5 * 5)
-        x = x.view(-1, 1024)
+        x = self.pool2(F.relu(self.conv2(x)))
+        x = x.view(-1, 16*5*5)
         x = F.relu(self.fc1(x))
-        #x = self.fc2(x)
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = self.fc4(x)
+        x = self.fc2(x)
         return x
 
 net = Net().double()
-# %%
-
-
 criterion = nn.CrossEntropyLoss()
-#optimizer = optim.SGD(net.parameters(), lr=0.0001, momentum=0.9)
 optimizer = optim.Adam(net.parameters(), lr=0.0001, betas =(0.9,0.999))
 # %%
 
+# List Capturing Loss Curve
 loss_capture = []
 
 for epoch in range(2):  # loop over the dataset multiple times
-
     running_loss = 0.0
     for i_batch, sample_batched in enumerate(dataloader):
         # get the inputs; data is a list of [inputs, labels]
         inputs = sample_batched['image'].double()
         labels = sample_batched['class_name']
-        #print("Labels:\n", labels) #Debug
-
         # zero the parameter gradients
         optimizer.zero_grad()
-
         # forward + backward + optimize
         outputs = net(inputs)
-        #print("Outputs:\n",outputs) # Debug
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -257,58 +228,33 @@ for epoch in range(2):  # loop over the dataset multiple times
         # print statistics
         running_loss += loss.item()
         loss_capture.append(loss.item())
-        if i_batch % 20 == 19:    # print every 20 mini-batches
+        if i_batch % 20 == 19:    #Print every 20 itr
             print('[%d, %5d] loss: %.3f' %
                   (epoch + 1, i_batch + 1, running_loss / 20))
             running_loss = 0.0
 
 print('Finished Training')
-# %%
-len(img_list)
-# %%
 plt.plot(loss_capture)
+plt.title("Loss Curve")
 
-
-# %% Tensorboard
- 
-# default `log_dir` is "runs" - we'll be more specific here
-writer = SummaryWriter('runs/logos_10_class_exp_1')
 # %%
-# get some random training images
+# Tensorboard
+ 
+# default `log_dir` is "runs" 
+writer = SummaryWriter('runs/res_and_cap_exp')
 dataiter = iter(dataloader)
 batch_tb = dataiter.next()
-
-# %%
-len(batch_tb['image'])
-# %%
-
-
-# create grid of images
 img_grid = torchvision.utils.make_grid(batch_tb['image'])
-
-# show images
-#matplotlib_imshow(img_grid, one_channel=True)
 
 # %%
 # write to tensorboard
 writer.add_image('four images', img_grid)
-# %%
-## Run in command Line tensorboard --logdir=runs
-# %%
-
+## At this stage Run in command Line tensorboard --logdir=runs
 writer.add_graph(net.float(), batch_tb['image'])
 #writer.close()
 
-
-
-
-
-
-## Needs Change
-# %%
-# 100 Random Images
-
-n_images = 24
+# Random Samples in a Projector ( PCA or T-SNE)
+n_images = 200
 max_range = len(img_list)
 img_group = []
 class_group = []
@@ -320,22 +266,16 @@ for i in range(n_images):
 img_group_t = torch.stack(img_group)
 class_group_t = torch.stack(class_group)
 
-# %%
-#import tensorflow as tf
-#import tensorboard as tb
-#tf.io.gfile = tb.compat.tensorflow_stub.io.gfile
-# %%
-features = img_group_t.view(-1, 128 * 128)
-
-# %%
+import tensorflow as tf
+import tensorboard as tb
+tf.io.gfile = tb.compat.tensorflow_stub.io.gfile
+# %% Projector - Might need Tensorboard Terminal Restart
+features = img_group_t.view(-1, 32 * 32)
 writer.add_embedding(features,
                     metadata=class_group_t,
                     label_img=img_group_t.unsqueeze(1))
 
-# %%
 writer.close()
 
-# %%
-len(sample_test['image'])
 
-# %%
+

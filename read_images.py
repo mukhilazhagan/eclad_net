@@ -1,9 +1,10 @@
+# %%
 from PIL import Image
 import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-
+# %%
 def read_images():
     src = './dataset'
 
@@ -14,7 +15,7 @@ def read_images():
         print("\n Found "+str(len(dirs))+ " Classes\n")
         for i in range(len(dirs)):
             print("\n Processing Class: "+ str(i))
-            dir_str = src+'/'+dirs[i]+'/output/'
+            dir_str = src+'/'+dirs[i]+'/'
 
             for (root_1, dirs_1, files_1) in os.walk(dir_str):
                 for j in range(len(files_1)):
@@ -37,4 +38,3 @@ def read_images():
         break
     
     return img_list, class_list
-
