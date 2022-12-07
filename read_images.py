@@ -14,7 +14,7 @@ def read_images():
     for (root,dirs,files) in os.walk(src):
         print("\n Found "+str(len(dirs))+ " Classes\n")
         for i in range(len(dirs)):
-            print("\n Processing Class: "+ str(i))
+            print("\n Processing Class: "+ str(dirs[i]))
             dir_str = src+'/'+dirs[i]+'/'
 
             for (root_1, dirs_1, files_1) in os.walk(dir_str):
@@ -34,6 +34,7 @@ def read_images():
                     #temp_list = temp_list.append(temp_img)
                     temp_img = temp_img
                     img_list.append(temp_img[:,:,0:3]) # png to 3 channels
+                    # Use to know number of images loaded
                     class_list.append(dirs[i])
         break
     
