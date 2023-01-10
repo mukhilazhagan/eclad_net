@@ -46,7 +46,6 @@ def read_images(train=False):
     
     return img_list, class_list
 
-
 def store_data(is_store_true, img_list, class_list):
     if is_store_true:
         file_wr = open('img_data.pkl', 'wb')
@@ -156,19 +155,17 @@ def MSE(convs, idx_images=0):
     # Finding total number of items in list
     nb_conv = convs.size(dim=1)
     count = 0
-     #looping through each convs of the list
-    for i in range(0,nb_conv): 
-        # loop again through each convs except the current one to compute MSE between all conv
-        for j in range(i+1,nb_conv):
-            for x in range(0, convs.size(dim=2)):
-                for y in range(0,convs.size(dim=3)):
-                    count += 1
-                    difference = convs[idx_images,i,x,y].item() - convs[idx_images,j,x,y].item()  #finding the difference between observed and predicted value
-                    squared_difference = difference**2  #taking square of the differene 
-                    summation += squared_difference  #taking a sum of all the differences
+    for cur_im in range(0,convs.size(dim=0)):
+        #looping through each convs of the list
+        for i in range(0,nb_conv): 
+            # loop again through each convs except the current one to compute MSE between all conv
+            for j in range(i+1,nb_conv):
+                for x in range(0, convs.size(dim=2)):
+                    for y in range(0,convs.size(dim=3)):
+                        count += 1
+                        difference = (abs(convs[cur_im,i,x,y].item()) - abs(convs[cur_im,j,x,y].item()))**2  #finding the difference between observed and predicted value
+                        squared_difference = difference**2  #taking square of the differene 
+                        summation += squared_difference  #taking a sum of all the differences
     MSE = summation/count #dividing summation by total values to obtain average
     return MSE
-
-def testa(a):
-    a = 88
     

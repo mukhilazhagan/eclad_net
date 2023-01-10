@@ -6,7 +6,7 @@ from torchvision import transforms, utils
 from torch.utils.tensorboard import SummaryWriter
 from definitions import *
 from PIL import Image
-
+from classes import *
 import os
 import torch
 import torchvision
@@ -29,9 +29,9 @@ GhostType = True
 is_read_data = True
 
 # Validation of GhostParameters or not
-isValidation = False
-FristRatio = 3
-SecondRatio = 3
+isValidation = True
+ratio1 = 2
+ratio2 = 2
 
 # Store or not values from validation
 storeValidationResults = False
@@ -48,289 +48,6 @@ if is_read_data:
 class_list_test = onehotencoding_class(class_list=class_list_test_t)
 class_list_train = onehotencoding_class(class_list=class_list_train_t)
 
-################## %% 
-# %%Classes
-
-class Logo_Dataset(Dataset):
-
-    def __init__(self, img_list, class_list, transform=None):
-        self.img_list = img_list
-        self.class_list = class_list
-        self.transform = transform
-    
-    def __len__(self):
-        return len(self.img_list)
-    
-    def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-        
-        # img = plt.imread(pd['Filename'][i])
-        # class_name = plt.imread(pd['Classname'][i])
-        # bbox = plt.imread(pd['Boundingbox'][i])
-        img = self.img_list[idx]
-        class_name = self.class_list[idx]
-        sample = {'image': img, 'class_name': class_name}
-
-        if self.transform:
-            sample = self.transform(sample)
-        
-        return sample
-class Rescale(object):
-    """ Rescaling image to given size - output_size
-    """
-
-    def __init__(self, output_size):
-        assert isinstance(output_size, (int,tuple))
-        self.output_size = output_size
-    
-    def __call__(self, sample):
-        image, class_name = sample['image'], sample['class_name']
-        #print(image.shape)
-        #print(self.output_size)
-        h, w = image.shape[:2]
-        """
-        if isinstance(self.output_size, int):
-            if h > w:
-                new_h, new_w = self.output_size * h / w, self.output_size
-            else:
-                new_h, new_w = self.output_size, self.output_size * w / h
-        else:
-            new_h, new_w = self.output_size 
-        """
-        new_h =  self.output_size
-        new_w =  self.output_size
-        img = transform.resize(image, (new_h, new_w))
-
-        return {'image': img, 'class_name': class_name}
-#class RandomCrop(object):
-class ToTensor(object):
-    """Convert ndarrays in sample to Tensors."""
-
-    def __call__(self, sample):
-        image, class_name = sample['image'], sample['class_name']
-
-        """
-        if len(image.shape)>2:
-            image_gray = 0.2999*image[:,:,0] + 0.5870*image[:,:,1] + 0.1140*image[:,:,2]
-        else:
-            image_gray = image
-        """
-
-        # swap color axis because
-        # numpy image: H x W x C
-        # torch image: C X H X W
-        #image = image.transpose((2, 0, 1))
-        image = image.transpose((2, 0, 1))
-        return {'image': torch.from_numpy(image),
-                'class_name': torch.tensor(class_name)}
-# Define NN
-import torch.nn as nn
-import torch.nn.functional as F
-class GhostModule(nn.Module):
-    
-    # Ex : inp = 3,oup = 12, kernel_size = 5(same settings than classical network)
-    def __init__(self,inp,oup,kernel_size=1,ratio=2,dw_size=3,stride=1,relu=True):
-        super(GhostModule,self).__init__()
-        self.oup = oup
-    
-        ### Compute channels for both primary and secondary based on ratio (s)
-        # Ex : init_channels = 12*0.3 = 3.6 = 4
-        init_channels = math.ceil(oup/ratio)
-            
-        # Ex : new_channels = 12-4 = 6
-        # Ex : new_channels + init_channels = 12 = oup
-        new_channels =  init_channels*(ratio-1)
-    
-        ## Primary standard convolution + MP + ReLU
-        self.primary_conv = nn.Sequential(
-            nn.Conv2d(inp, init_channels, kernel_size, stride),
-            nn.ReLU(inplace=True)
-        )
-        
-    
-        ### Secondary depthwise convolution + MP + ReLU
-        self.cheap_operation = nn.Sequential(
-            nn.Conv2d(init_channels, new_channels, dw_size, 1, dw_size//2, groups=init_channels),
-        # groups allow to perform convolution only once for each matrix 
-            nn.ReLU(inplace=True)
-        )
-
-
-    def forward(self, x, test=False):
-        tic = time.perf_counter()
-        x1 = self.primary_conv(x)
-        toc = time.perf_counter()
-        print(f"Classic Conv in {toc-tic:0.12f} seconds")        
-        
-        ## WARNINGS, VALUE 
-        if test:
-            plt.figure()
-            # plot conv output from the first layer for the first figure of the batch
-            for i in range(self.init_channels):
-                plt.subplot(self.init_channels//2+1, 3, i+1)
-                # print(torch.max(torch.abs(x_temp1[0,i,:,:])))
-                plt.imshow(x1[0,i,:,:].detach().numpy(),cmap='gray', vmin=0, vmax= 1.5)
-                plt.xticks([])
-                plt.yticks([])
-            plt.suptitle("Classic Convolutional Layer, MSE : {0:.4f}".format(MSE(x1)), fontsize=16)
-                
-        tic = time.perf_counter()
-        x2 = self.cheap_operation(x1)
-        toc = time.perf_counter()
-        print(f"Cheap Conv in {toc-tic:0.12f} seconds")
-        
-                ## WARNINGS, VALUE 
-        if test:
-            plt.figure()
-            # plot conv output from the first layer for the first figure of the batch
-            for i in range(self.new_channels):
-                plt.subplot(self.new_channels//2+1, 3, i+1)
-                # print(torch.max(torch.abs(x_temp1[0,i,:,:])))
-                plt.imshow(x2[0,i,:,:].detach().numpy(),cmap='gray', vmin=0, vmax= 1.5)
-                plt.xticks([])
-                plt.yticks([])
-            plt.suptitle("Cheap Operation Results, MSE : {0:.4f}".format(MSE(x2)), fontsize=16)
-
-        ### Stack Standard and Depthwise
-        out = torch.cat([x1,x2], dim=1)
-        return out[:,:self.oup,:,:]
-    
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        # nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None)
-        # Original images are 32x32
-        self.conv1 = nn.Conv2d(3, 12, 5)
-
-        self.pool = nn.MaxPool2d(2, 2)
-        
-        self.conv2 = nn.Conv2d(12, 24, 5)
-        # Ghost Module
-        #self.conv2 = GhostModule(6, 16, 5)
-        self.pool2 = nn.MaxPool2d(2, 2)
-        ## Output dim of conv layer is 16(nb_channels)*5*5(remaining dim of pictures)
-        # Linear(in_features: int, out_features: int, bias: bool = True, device: Any | None = None, dtype: Any | None = None)
-        self.fc1 = nn.Linear(24*5*5, 32)
-        ## Res or Cap ? Reason for last dim of two
-        self.fc2 = nn.Linear(32, 2)
-        ## SoftMax 
-        self.sm1 = nn.Softmax(dim=1)
-    
-    ## x correspond to the image
-    def forward(self, x, test=False):
-        # Conv + ReLu + Pool (First Layer)
-        # tic = time.perf_counter()
-        if test:
-            x_temp1_ = self.conv1(x)
-            # toc = time.perf_counter()
-            # print(f"Trained in {toc-tic:0.4f} seconds")
-            # Ghost Module
-            # x = self.pool(self.conv1.forward(x))
-            # plot conv output from the first layer for the first figure of the batch
-            plt.figure()
-            plt.subplot(5,3,2)
-            plt.imshow(x[0].detach().numpy().transpose(1, 2, 0))
-            for i in range(12):
-                plt.subplot(5, 3, i+1+3)
-                # print(torch.max(torch.abs(x_temp1[0,i,:,:])))
-                plt.imshow(x_temp1_[0,i,:,:].detach().numpy(),cmap='gray', vmin=0, vmax= 1.5)
-                plt.xticks([])
-                plt.yticks([])
-            plt.suptitle("First Convolutional Layer, MSE : {0:.4f}".format(MSE(x_temp1_)), fontsize=16)
-            
-            x_temp1 = self.pool(F.relu(x_temp1_))
-            
-        ## Computeall in once if no conv plot required
-        else : 
-            tic = time.perf_counter()
-            xtemp1_ = F.relu(self.conv1(x))
-            toc = time.perf_counter()
-            print(f"Classix Net : Classic Conv 1 in {toc-tic:0.12f} seconds")
-            x_temp1 = self.pool(xtemp1_)
-        
-        
-        # Conv + ReLu + Pool (Second Layer)
-        if test:
-            x_temp2_ = self.conv2(x_temp1)
-            # plot conv output from the second layer for the first figure of the batch
-            plt.figure()
-            plt.subplot(9,3,2)
-            plt.imshow(x[0].detach().numpy().transpose(1, 2, 0))
-            for i in range(24):
-                plt.subplot(9, 3, i+1+3)
-                plt.imshow(x_temp2_[0,i,:,:].detach().numpy(),cmap='gray', vmin=0, vmax =1.5)
-                plt.xticks([])
-                plt.yticks([])
-            plt.suptitle("Second Convolutional Layer, MSE : {0:.4f}".format(MSE(x_temp2_)), fontsize=16)
-            
-            x_temp2 = self.pool2(F.relu(x_temp2_))
-        else:
-            
-            tic = time.perf_counter()
-            xtemp2_ = F.relu(self.conv2(x_temp1))
-            toc = time.perf_counter()
-            print(f"Classix Net : Classic Conv 2 in {toc-tic:0.12f} seconds")
-            x_temp2 = self.pool2(xtemp2_)
-             
-             
-        # Ghost Module
-        # x = self.pool2(self.conv2.forward(x))
-        # -1 re arrange array regarding the second parameter
-        ## Error "shape '[-1, 400]' is invalid for input of size 4096"
-        x_ = x_temp2.view(-1, 24*5*5)
-        x_ = F.relu(self.fc1(x_))
-        # No relu for fc2 cause we use softMax to end up with probability for the class
-        x_ = self.fc2(x_)
-        x_ = self.sm1(x_)
-        
-        return x_
-
-class GhostNet(nn.Module):
-    def __init__(self,ratio1=2,ratio2=2):
-        super(GhostNet, self).__init__()
-        # nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None)
-        # Original images are 32x32
-        self.ghost1 = GhostModule(3,12,kernel_size=5,ratio=ratio1,dw_size=5,relu=True)
-        self.pool1 = nn.MaxPool2d(2, 2)
-        
-        self.ghost2 = GhostModule(12,24,kernel_size=5,ratio=ratio2,dw_size=5,relu=True)
-        self.pool2 = nn.MaxPool2d(2, 2)
-        
-        ## Output dim of conv layer is 16(nb_channels)*5*5(remaining dim of pictures)
-        # Linear(in_features: int, out_features: int, bias: bool = True, device: Any | None = None, dtype: Any | None = None)
-        self.fc1 = nn.Linear(24*5*5, 32)
-        ## Res or Cap ? Reason for last dim of two
-        self.fc2 = nn.Linear(32, 2)
-        ## SoftMax 
-        self.sm1 = nn.Softmax(dim=1)
-    
-    ## x correspond to the image
-    def forward(self, x, test=False):
-        # Conv + ReLu + Pool (First Layer)
-        # tic = time.perf_counter()
-        x_temp1 = self.pool1(F.relu(self.ghost1(x,test)))
-        # toc = time.perf_counter()
-        # print(f"Trained in {toc-tic:0.4f} seconds")
-        # Conv + ReLu + Pool (Second Layer)
-        x_temp2 = self.pool2(F.relu(self.ghost2(x_temp1,test)))
-        if test:
-            plt.figure()
-            plt.imshow(x[0].detach().numpy().transpose(1, 2, 0))
-        # x = self.pool2(self.conv2.forward(x))
-        # -1 re arrange array regarding the second parameter
-        ## Error "shape '[-1, 400]' is invalid for input of size 4096"
-        x_ = x_temp2.view(-1, 24*5*5)
-        x_ = F.relu(self.fc1(x_))
-        # No relu for fc2 cause we use softMax to end up with probability for the class
-        x_ = self.fc2(x_)
-        x_ = self.sm1(x_)
-        
-        return x_
-        
-###################
-### END Classes ###
-###################
    
 # %% DATA FOMATTING
 # transforms.Compose([Rescale(32), ToTensor()])) : applique d'abord une transformation Rescale puis toTensor
@@ -368,7 +85,7 @@ if GhostType == False:
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(net.parameters())
 elif not(isValidation):
-    net = GhostNet(FristRatio,SecondRatio)
+    net = GhostNet(ratio1,ratio2)
     # Usual criterion for classification
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(net.parameters())
@@ -385,23 +102,28 @@ epochs = 10
 plotLoss = False
 # First row : ratio1 
 # Second row : ratio2
-# Third row : train final accuracy
+# Third row : train FINAL accuracy
 # Forth row : train time
-# Fifth row : validation accuracy
+# Fifth row : validation FINAL accuracy
 # Six row : validation time
+# Seventh tow : nb trainable parameters
 validation_results = [[]]
 # Store all loss capture for each set of parameters
-validation_loss_capture = [[]]
+train_loss_capture = [[]]
+# Store all accuracy capture for each set of parameters
+train_accuracy_capture = [[]]
 # Store all accuracy capture for each set of parameters
 validation_accuracy_capture = [[]]
 
-for ratio1 in range(2,5):
+for ratio1 in range(2,6):
 
-    for ratio2 in range(2,5):
+    for ratio2 in range(2,6):
         
         loss_capture = []
         accuracy_capture = []
+
         if isValidation:
+            accuracy_capture_v = []
             # Define the tested Model
             net = GhostNet(ratio1,ratio2)
             # Usual criterion for classification
@@ -454,6 +176,10 @@ for ratio1 in range(2,5):
                         correct += 1
                     total += 1
 
+            #################################
+            ## END TRAIN FOR CURRENT EPOCH ##
+            #################################
+            
             # Mean loss for the current epoch of all loss computed for each batch (batchsize : 4)
             running_loss = running_loss / len(trainloader)  
             loss_capture.append(running_loss)
@@ -462,6 +188,33 @@ for ratio1 in range(2,5):
             print("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, loss))
             print("Accuracy : {} - Ratio : {}/{} \n".format(correct/total,correct,total))
             
+            ## Validation for each epochs
+            if isValidation:
+                i = 0
+                validation_loss = 0.0
+                vcorrect, vtotal = 0,0
+                
+                vtic = time.perf_counter()
+                for vi_batch, vsample_batched in enumerate(validationloader):
+                    vinputs = vsample_batched['image']
+                    vlabels = vsample_batched['class_name']
+                    i += 1
+                    voutput = net(vinputs,test=False)
+                    #print(torch.argmax(output,axis = 1))
+                    for o,l in zip(torch.argmax(voutput,axis = 1),vlabels):
+                        if o == l:
+                            vcorrect += 1
+                        vtotal += 1
+                    vloss= criterion(voutput,vlabels)
+                    validation_loss += vloss.item() * vinputs.size(0)
+                vtoc = time.perf_counter()
+                print(f'Validation Loss at epochs {epoch}:{validation_loss/len(validationloader)}')
+                print(f'Correct Predictions in validation at epoch{epoch} : {vcorrect}/{vtotal}')
+                accuracy_capture_v.append(vcorrect/vtotal)
+            
+        #########################
+        ## END EPOCHS FOR LOOP ##
+        #########################
         toc = time.perf_counter()
         print('Finished Training')
         if plotLoss:
@@ -478,11 +231,16 @@ for ratio1 in range(2,5):
         if not(isValidation):
             break
         
-        
-        validation_loss_capture.append(loss_capture)
-        validation_accuracy_capture.append(accuracy_capture)
+        ## Retrieve data
+        train_loss_capture.append(loss_capture)
+        train_accuracy_capture.append(accuracy_capture)
+        if isValidation:
+            validation_accuracy_capture.append(accuracy_capture_v)
+        ## Retrieve some usefull data for last epoch
         tmp_valid.append(correct/total)
         tmp_valid.append(toc-tic)
+        
+        
         i = 0
         validation_loss = 0.0
         vcorrect, vtotal = 0,0
@@ -505,24 +263,32 @@ for ratio1 in range(2,5):
         print(f'Correct Predictions in validation : {vcorrect}/{vtotal}')
         tmp_valid.append(vcorrect/vtotal)
         tmp_valid.append(vtoc-vtic)
+        
+        ## Nb weight and bias used by the model
+        # Represent data needed to store and exploit the model
+        pytorch_total_params_trainable = sum(p.numel() for p in net.parameters() if p.requires_grad)
+        tmp_valid.append(pytorch_total_params_trainable)
         # Update count to store new informations of validation in validation results
         validation_results.append(tmp_valid)
     if not(isValidation):
         break
 
 
-# %% 
-
-
+# %% Save model
 print("Model's state_dict:")
 for param_tensor in net.state_dict():
     print(param_tensor, "\t", net.state_dict()[param_tensor].size())
+pytorch_total_params_trainable = sum(p.numel() for p in net.parameters() if p.requires_grad)
+print("nb parameters : {}".format(pytorch_total_params_trainable))
+
+torch.save(net.state_dict(), "runs/model/currentNet.pt")
     
 # %% STORE VALIDATION RESULTS
 if storeValidationResults and isValidation:
     np.savetxt("validation/parameters.csv",validation_results[1:] , delimiter=",")  
-    np.savetxt("validation/losses.csv",validation_loss_capture[1:] , delimiter=",")    
-    np.savetxt("validation/accuracies.csv",validation_accuracy_capture[1:] , delimiter=",")  
+    np.savetxt("validation/ValdiationAccuracies.csv",validation_accuracy_capture[1:] , delimiter=",")  
+    np.savetxt("validation/TrainLosses.csv",train_loss_capture[1:] , delimiter=",")    
+    np.savetxt("validation/TrainAccuracies.csv",train_accuracy_capture[1:] , delimiter=",")  
 # %% TEST AND PLOT INTERESTING VALUES
 
 
@@ -537,21 +303,25 @@ if isValidation:
 test_loss = 0.0
 correct, total = 0,0
 i = 0
+mse1 = 0.0
+mse2 = 0.0
 plot = False
-
+test = True
 
 tic = time.perf_counter()
 for i_batch, sample_batched in enumerate(testloader):
     inputs = sample_batched['image']
     labels = sample_batched['class_name']
     i += 1
-    if plot == True:
+    if test == True:
         # if i%10 == 0:
         #     saliency(inputs,net)
         # else:   
-        output = net(inputs,test=True)   
+        output, tmp_mse1, tmp_mse2 = net(inputs,test=test,plot=plot)   
+        mse1 += tmp_mse1
+        mse2 += tmp_mse2
     else:
-        output = net(inputs,test=False)
+        output = net(inputs,test=test)
     #print(torch.argmax(output,axis = 1))
     for o,l in zip(torch.argmax(output,axis = 1),labels):
         if o == l:
@@ -560,11 +330,14 @@ for i_batch, sample_batched in enumerate(testloader):
     loss = criterion(output,labels)
     test_loss += loss.item() * inputs.size(0)
     
+
+    
 toc = time.perf_counter()
 print(f"Tested in {toc-tic:0.4f} seconds")
 print(f'Testing Loss:{test_loss/len(testloader)}')
 print(f'Correct Predictions: {correct}/{total}')
-
+print(f'MSE Mean Conv 1 : {mse1/i}')
+print(f'MSE Mean Conv 2: {mse2/i}')
 
 
 # # %%
