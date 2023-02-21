@@ -1,25 +1,16 @@
 # %%
 from __future__ import print_function, division
-from skimage import io, transform
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import DataLoader
+from torchvision import transforms
 from definitions import *
-from PIL import Image
 from classes import *
-import os
 import torch
-import torchvision
-import random
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.optim as optim
 import warnings
 import time 
 import math
-import tensorflow as tf
-import tensorboard as tb
 
 warnings.filterwarnings("ignore")
 plt.ion()   # interactive mode
@@ -339,51 +330,3 @@ print(f'Correct Predictions: {correct}/{total}')
 print(f'MSE Mean Conv 1 : {mse1/i}')
 print(f'MSE Mean Conv 2: {mse2/i}')
 
-
-# # %%
-# # Tensorboard
- 
-# # default `log_dir` is "runs" 
-# writer = SummaryWriter('runs/res_and_cap_exp')
-# dataiter = iter(trainloader)
-# batch_tb = next(dataiter)
-# img_grid = torchvision.utils.make_grid(batch_tb['image'])
-
-# # %%
-# # write to tensorboard
-# writer.add_image('four images', img_grid)
-# ## At this stage Run in command Line tensorboard --logdir=runs
-# writer.add_graph(net.float(), batch_tb['image'])
-# #writer.close()
-
-# # Random Samples in a Projector ( PCA or T-SNE)
-# n_images = 200
-# max_range = len(img_list_test)
-# img_group = []
-# class_group = []
-
-
-# for i in range(n_images):
-#     # sample_test is a list {image,class}
-#     sample_test = transformed_dataset_train.__getitem__(random.randint(0,max_range))
-#     img_group.append(sample_test['image'][0])
-#     class_group.append(sample_test['class_name'])
-
-# # Stack output images (actually feature vector) and corresponding class in tensor
-# img_group_t = torch.stack(img_group)
-# class_group_t = torch.stack(class_group)
-
-# # %%
-# tf.io.gfile = tb.compat.tensorflow_stub.io.gfile
-# # %% Projector - Might need Tensorboard Terminal Restart
-# features = img_group_t.view(-1, 32 * 32)
-# writer.add_embedding(features,
-#                     metadata=class_group_t,
-#                    label_img=img_group_t.unsqueeze(1))
-
-# writer.close()
-# while True:
-#     print('end')
-
-
-# # %%

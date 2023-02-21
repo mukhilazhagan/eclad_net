@@ -1,14 +1,10 @@
 from skimage import io, transform
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import Dataset
 import torch
 import math
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from definitions import MSE
-import time
 
 
 class Logo_Dataset(Dataset):
