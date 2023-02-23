@@ -272,14 +272,22 @@ for param_tensor in net.state_dict():
 pytorch_total_params_trainable = sum(p.numel() for p in net.parameters() if p.requires_grad)
 print("nb parameters : {}".format(pytorch_total_params_trainable))
 
-torch.save(net.state_dict(), "runs/model/currentNet.pt")
+
+if GhostType:
+    torch.save(net.state_dict(), "runs/model/ghostNet_{}_{}.pt".format(ratio1,ratio2))
+else :
+    torch.save(net.state_dict(), "runs/model/classicNet.pt")
     
+print("Saving model finished")
+
+
 # %% STORE VALIDATION RESULTS
 if storeValidationResults and isValidation:
     np.savetxt("validation/parameters.csv",validation_results[1:] , delimiter=",")  
     np.savetxt("validation/ValdiationAccuracies.csv",validation_accuracy_capture[1:] , delimiter=",")  
     np.savetxt("validation/TrainLosses.csv",train_loss_capture[1:] , delimiter=",")    
     np.savetxt("validation/TrainAccuracies.csv",train_accuracy_capture[1:] , delimiter=",")  
+    print("Saving valdiation files finished")
 # %% TEST AND PLOT INTERESTING VALUES
 
 
@@ -290,7 +298,7 @@ if isValidation:
     print("Then, unset \"isValidation\" to train the model with the right hyperparameters")
     quit()
     
-    
+print("TESTING") 
 test_loss = 0.0
 correct, total = 0,0
 i = 0
@@ -321,7 +329,6 @@ for i_batch, sample_batched in enumerate(testloader):
     loss = criterion(output,labels)
     test_loss += loss.item() * inputs.size(0)
     
-
     
 toc = time.perf_counter()
 print(f"Tested in {toc-tic:0.4f} seconds")
