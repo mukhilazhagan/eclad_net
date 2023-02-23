@@ -30,18 +30,18 @@ warnings.filterwarnings("ignore")
 plt.ion()   # interactive mode
 
 # Define the network type : Ghost or Usual
-GhostType = True
 is_read_data = True
 
 # Validation of GhostParameters or not
-isValidation = True
-ratio1 = 2
-ratio2 = 2
+isValidation = False
+
+if GhostType:
+    ratio1 = args.ratio1
+    ratio2 = args.ratio2
+    print("ratio : {} {}".format(ratio1,ratio2))
 
 # Store or not values from validation
 storeValidationResults = False
-
-
 
 
 # %% Load data
@@ -85,11 +85,13 @@ testloader = DataLoader(transformed_dataset_test, batch_size=1,
 # It's redefined for every new set of hyperparameters in the TRAINING PHASE
 
 if GhostType == False:
+    print("Classic ECLAD NET")
     net = Net()
     # Usual criterion for classification
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(net.parameters())
 elif not(isValidation):
+    print("Ghost ECLAD NET no validation")
     net = GhostNet(ratio1,ratio2)
     # Usual criterion for classification
     criterion = nn.CrossEntropyLoss()
@@ -120,9 +122,9 @@ train_accuracy_capture = [[]]
 # Store all accuracy capture for each set of parameters
 validation_accuracy_capture = [[]]
 
-for ratio1 in range(2,6):
+for _ratio1 in range(2,6):
 
-    for ratio2 in range(2,6):
+    for _ratio2 in range(2,6):
         
         loss_capture = []
         accuracy_capture = []
@@ -130,13 +132,13 @@ for ratio1 in range(2,6):
         if isValidation:
             accuracy_capture_v = []
             # Define the tested Model
-            net = GhostNet(ratio1,ratio2)
+            net = GhostNet(_ratio1,_ratio2)
             # Usual criterion for classification
             criterion = nn.CrossEntropyLoss()
             optimizer = optim.Adam(net.parameters())
             tmp_valid = []
-            tmp_valid.append(ratio1)
-            tmp_valid.append(ratio2)
+            tmp_valid.append(_ratio1)
+            tmp_valid.append(_ratio2)
             
             
         tic = time.perf_counter()
