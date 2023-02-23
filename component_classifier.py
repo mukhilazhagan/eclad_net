@@ -273,10 +273,14 @@ pytorch_total_params_trainable = sum(p.numel() for p in net.parameters() if p.re
 print("nb parameters : {}".format(pytorch_total_params_trainable))
 
 
+
+torch_path = "runs/model/pytorch"
+if not(os.path.exists(torch_path)):
+    os.makedirs(torch_path)
 if GhostType:
-    torch.save(net.state_dict(), "runs/model/ghostNet_{}_{}.pt".format(ratio1,ratio2))
+    torch.save(net.state_dict(), os.path.join(torch_path,"ghostNet_{}_{}.pt".format(ratio1,ratio2)))
 else :
-    torch.save(net.state_dict(), "runs/model/classicNet.pt")
+    torch.save(net.state_dict(), os.path.join(torch_path,"runs/model/classicNet.pt"))
     
 print("Saving model finished")
 

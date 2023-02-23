@@ -23,6 +23,9 @@ isGhostNet = args.ghost
 # An example input you would normally provide to your model's forward() method.
 dummy_input = torch.rand(1, 3, 32, 32)
 
+onnx_path = "runs/model/onnx"
+if not(os.path.exists(onnx_path)):
+    os.makedirs(onnx_path)
 
 if isGhostNet:
     netType = "GhostNet"
@@ -32,7 +35,9 @@ if isGhostNet:
     torch_out = model(dummy_input)
     print(torch_out)
     # Export to ONNX
-    torch.onnx.export(model, dummy_input,"ghostEclad_{}_{}.onnx".format(args.ratio1,args.ratio2), export_params=True, input_names = ['input'])
+    torch.onnx.export(model, dummy_input, os.path.join(onnx_path,"ghostEclad_{}_{}.onnx".format(args.ratio1,args.ratio2)),
+                       export_params=True,
+                         input_names = ['input'])
     
 
 else:
@@ -42,7 +47,7 @@ else:
     model.eval()
     torch_out = model(dummy_input)
     # Export to ONNX
-    torch.onnx.export(model, dummy_input, "ecladNet.onnx",
+    torch.onnx.export(model, dummy_input, os.path.join(onnx_path,"ecladNet.onnx"),
                     export_params=True,
                     input_names = ['input'])
 
