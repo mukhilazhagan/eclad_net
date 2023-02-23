@@ -296,7 +296,7 @@ if not(os.path.exists(torch_path)):
 if GhostType:
     torch.save(net.state_dict(), os.path.join(torch_path,"ghostNet_{}_{}.pt".format(ratio1,ratio2)))
 else :
-    torch.save(net.state_dict(), os.path.join(torch_path,"classicNet.pt"))
+    torch.save(net.state_dict(), os.path.join(torch_path,"ecladNet.pt"))
     
 print("Saving model finished")
 

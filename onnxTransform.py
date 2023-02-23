@@ -30,10 +30,9 @@ if not(os.path.exists(onnx_path)):
 if isGhostNet:
     netType = "GhostNet"
     model = GhostNet(args.ratio1,args.ratio2)
-    model.load_state_dict(torch.load('runs/model/ghostNet_{}_{}.pt'.format(args.ratio1,args.ratio2)))
+    model.load_state_dict(torch.load('runs/model/pytorch/ghostNet_{}_{}.pt'.format(args.ratio1,args.ratio2)))
     model.eval()
     torch_out = model(dummy_input)
-    print(torch_out)
     # Export to ONNX
     torch.onnx.export(model, dummy_input, os.path.join(onnx_path,"ghostEclad_{}_{}.onnx".format(args.ratio1,args.ratio2)),
                        export_params=True,
@@ -43,7 +42,7 @@ if isGhostNet:
 else:
     netType="ClassicNet"
     model = Net()
-    model.load_state_dict(torch.load('runs/model/ecladNet.pt'))
+    model.load_state_dict(torch.load('runs/model/pytorch/ecladNet.pt'))
     model.eval()
     torch_out = model(dummy_input)
     # Export to ONNX
