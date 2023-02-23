@@ -306,25 +306,13 @@ print("TESTING")
 test_loss = 0.0
 correct, total = 0,0
 i = 0
-mse1 = 0.0
-mse2 = 0.0
-plot = False
-test = True
 
 tic = time.perf_counter()
 for i_batch, sample_batched in enumerate(testloader):
     inputs = sample_batched['image']
     labels = sample_batched['class_name']
     i += 1
-    if test == True:
-        # if i%10 == 0:
-        #     saliency(inputs,net)
-        # else:   
-        output, tmp_mse1, tmp_mse2 = net(inputs,test=test,plot=plot)   
-        mse1 += tmp_mse1
-        mse2 += tmp_mse2
-    else:
-        output = net(inputs,test=test)
+    output = net(inputs)
     #print(torch.argmax(output,axis = 1))
     for o,l in zip(torch.argmax(output,axis = 1),labels):
         if o == l:
@@ -332,12 +320,8 @@ for i_batch, sample_batched in enumerate(testloader):
         total += 1
     loss = criterion(output,labels)
     test_loss += loss.item() * inputs.size(0)
-    
-    
 toc = time.perf_counter()
 print(f"Tested in {toc-tic:0.4f} seconds")
 print(f'Testing Loss:{test_loss/len(testloader)}')
 print(f'Correct Predictions: {correct}/{total}')
-print(f'MSE Mean Conv 1 : {mse1/i}')
-print(f'MSE Mean Conv 2: {mse2/i}')
 

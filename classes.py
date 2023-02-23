@@ -111,44 +111,17 @@ class GhostModule(nn.Module):
         self.cheap_operation = nn.Conv2d(init_channels, new_channels, dw_size, 1, dw_size//2, groups=init_channels)
         # groups allow to perform convolution only once for each matrix 
 
-    def forward(self, x, test=False, plot = False):
-        mse1 = 0.0
+    def forward(self, x):
         # tic = time.perf_counter()
         x1 = self.primary_conv(x)
         # toc = time.perf_counter()
         # print(f"Classic Conv in {toc-tic:0.12f} seconds")        
-        
-        ## WARNINGS, VALUE 
-        if test:
-            if plot:
-                plt.figure()
-                # plot conv output from the first layer for the first figure of the batch
-                for i in range(self.init_channels):
-                    plt.subplot(self.init_channels//2+1, 3, i+1)
-                    # print(torch.max(torch.abs(x_temp1[0,i,:,:])))
-                    plt.imshow(x1[0,i,:,:].detach().numpy(),cmap='gray', vmin=0, vmax= 1.5)
-                    plt.xticks([])
-                    plt.yticks([])
-            
-                plt.suptitle("Classic Convolutional Layer, MSE : {0:.4f}".format(mse1), fontsize=16)
-                
+                       
         # tic = time.perf_counter()
         x2 = self.cheap_operation(x1)
         # toc = time.perf_counter()
         # print(f"Cheap Conv in {toc-tic:0.12f} seconds")
         
-                ## WARNINGS, VALUE 
-        if test:
-            if plot:
-                plt.figure()
-                # plot conv output from the first layer for the first figure of the batch
-                for i in range(self.new_channels):
-                    plt.subplot(self.new_channels//2+1, 3, i+1)
-                    # print(torch.max(torch.abs(x_temp1[0,i,:,:])))
-                    plt.imshow(x2[0,i,:,:].detach().numpy(),cmap='gray', vmin=0, vmax= 1.5)
-                    plt.xticks([])
-                    plt.yticks([])
-                plt.suptitle("Cheap Operation Results, MSE : {0:.4f}".format(MSE(x2)), fontsize=16)
 
         ### Stack Standard and Depthwise
         out = torch.cat([x1,x2], dim=1)
@@ -156,10 +129,7 @@ class GhostModule(nn.Module):
         ## Sometimes, to ensure that out_channels is divisble by groups (mandatory by pytorch)
         # cheap operation compute more feature map
         # Thats why it retrieve only the necessary number of layer, not all of them it's to much has been computed
-        
-        if test:
-            mse1 = MSE(out[:,:self.oup,:,:])
-        return out[:,:self.oup,:,:],mse1
+        return out[:,:self.oup,:,:]
         
 class Net(nn.Module):
     def __init__(self):
@@ -183,61 +153,19 @@ class Net(nn.Module):
         self.sm1 = nn.Softmax(dim=1)
     
     ## x correspond to the image
-    def forward(self, x, test=False, plot = False):
-        mse_layer1 = 0.0
-        mse_layer2 = 0.0
+    def forward(self, x):
         # Conv + ReLu + Pool (First Layer)
         # tic = time.perf_counter()
-        if test:
-            x_temp1_ = self.conv1(x)
-            mse_layer1 = MSE(x_temp1_)
-            # toc = time.perf_counter()
-            # print(f"Trained in {toc-tic:0.4f} seconds")
-            # Ghost Module
-            # x = self.pool(self.conv1.forward(x))
-            # plot conv output from the first layer for the first figure of the batch
-            if plot : 
-                plt.figure()
-                plt.subplot(5,3,2)
-                plt.imshow(x[0].detach().numpy().transpose(1, 2, 0))
-                for i in range(12):
-                    plt.subplot(5, 3, i+1+3)
-                    # print(torch.max(torch.abs(x_temp1[0,i,:,:])))
-                    plt.imshow(x_temp1_[0,i,:,:].detach().numpy(),cmap='gray', vmin=0, vmax= 1.5)
-                    plt.xticks([])
-                    plt.yticks([])
-            
-                plt.suptitle("First Convolutional Layer, MSE : {0:.4f}".format(mse_layer1), fontsize=16)
-            
-            x_temp1 = self.pool(F.relu(x_temp1_))
             
         ## Computeall in once if no conv plot required
-        else : 
-            xtemp1_ = F.relu(self.conv1(x))
-            x_temp1 = self.pool(xtemp1_)
+        xtemp1_ = F.relu(self.conv1(x))
+        x_temp1 = self.pool(xtemp1_)
         
         
         # Conv + ReLu + Pool (Second Layer)
-        if test:
-            x_temp2_ = self.conv2(x_temp1)
-            mse_layer2 = MSE(x_temp2_)
-            # plot conv output from the second layer for the first figure of the batch
-            if plot:
-                plt.figure()
-                plt.subplot(9,3,2)
-                plt.imshow(x[0].detach().numpy().transpose(1, 2, 0))
-                for i in range(24):
-                    plt.subplot(9, 3, i+1+3)
-                    plt.imshow(x_temp2_[0,i,:,:].detach().numpy(),cmap='gray', vmin=0, vmax =1.5)
-                    plt.xticks([])
-                    plt.yticks([])
 
-                plt.suptitle("Second Convolutional Layer, MSE : {0:.4f}".format(mse_layer2), fontsize=16)
-            
-            x_temp2 = self.pool2(F.relu(x_temp2_))
-        else:
-            xtemp2_ = F.relu(self.conv2(x_temp1))
-            x_temp2 = self.pool2(xtemp2_)
+        xtemp2_ = F.relu(self.conv2(x_temp1))
+        x_temp2 = self.pool2(xtemp2_)
              
              
         # Ghost Module
@@ -250,10 +178,8 @@ class Net(nn.Module):
         x_ = self.fc2(x_)
         x_ = self.sm1(x_)
         
-        if test:
-            return x_, mse_layer1, mse_layer2
-        else :   
-            return x_
+
+        return x_
 
 class GhostNet(nn.Module):
     def __init__(self,ratio1=2,ratio2=2):
@@ -275,21 +201,16 @@ class GhostNet(nn.Module):
         self.sm1 = nn.Softmax(dim=1)
     
     ## x correspond to the image
-    def forward(self, x, test=False, plot = False):
-        mse1 = 0.0
-        mse2 = 0.0
+    def forward(self, x):
         # Conv + ReLu + Pool (First Layer)
         # tic = time.perf_counter()
-        x_temp1_, mse1 = self.ghost1(x,test, plot)
+        x_temp1_ = self.ghost1(x)
         x_temp1 = self.pool1(F.relu(x_temp1_))
         # toc = time.perf_counter()
         # print(f"Trained in {toc-tic:0.4f} seconds")
         # Conv + ReLu + Pool (Second Layer)
-        x_temp2_, mse2 = self.ghost2(x_temp1,test, plot)
+        x_temp2_= self.ghost2(x_temp1)
         x_temp2 = self.pool1(F.relu(x_temp2_))
-        if plot:
-            plt.figure()
-            plt.imshow(x[0].detach().numpy().transpose(1, 2, 0))
         # x = self.pool2(self.conv2.forward(x))
         # -1 re arrange array regarding the second parameter
         ## Error "shape '[-1, 400]' is invalid for input of size 4096"
@@ -299,8 +220,5 @@ class GhostNet(nn.Module):
         x_ = self.fc2(x_)
         x_ = self.sm1(x_)
         
-        if test:
-            return x_,mse1,mse2
-        else: 
-            return x_
+        return x_
         
