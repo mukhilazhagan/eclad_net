@@ -29,28 +29,28 @@ onnx.checker.check_model(model)
 # Print a human readable representation of the graph
 print(onnx.helper.printable_graph(model.graph))
 
-
-
+provider = "CUDAExecutionProvider" if torch.cuda.is_available() else "CPUExecutionProvider"
+print(provider)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ## RUNTIME
 # Define model 
-ort_session = onnxruntime.InferenceSession(onnx_file)
+with onnxruntime.InferenceSession(onnx_file,providers=provider) as ort_session:
 
 # Retrieve input 
-img_list_test, class_list_test_t = definitions.read_images(train=False)
+    img_list_test, class_list_test_t = definitions.read_images(train=False)
 
-class_list_test_t = definitions.onehotencoding_class(class_list_test_t)
-
-resize_transform = transforms.Resize((32, 32))
-
-
-input_data = np.array(img_list_test)  # Convert the list of images to a numpy array
-input_data = np.transpose(input_data, (0, 3, 1, 2))  # Change the layout from NHWC to NCHW
-input_data = input_data.astype(np.float32)  # Convert the data type to float32
-input_data = torch.tensor(input_data)
-input_data = torch.stack([resize_transform(img) for img in input_data])
-input_data = np.array(input_data)
+    class_list_test_t = definitions.onehotencoding_class(class_list_test_t)
+    resize_transform = transforms.Resize((32, 32))    
 
 
+    input_data = np.array(img_list_test)  # Convert the list of images to a numpy array
+    input_data = np.transpose(input_data, (0, 3, 1, 2))  # Change the layout from NHWC to NCHW
+    input_data = input_data.astype(float())  # Convert the data type to float32
 
-acc,tim_inf = definitions.testModelONNX(ort_session, input_data, class_list_test_t)
+    input_data = torch.tensor(input_data, device=device)
+    input_data = torch.stack([resize_transform(img).to(device) for img in input_data])
+    input_data = np.array(input_data).to(device)
+
+    acc,tim_inf = definitions.testModelONNX(ort_session, input_data, class_list_test_t,device=device)
+

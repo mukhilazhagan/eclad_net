@@ -33,20 +33,23 @@ input_data = torch.stack([resize_transform(img) for img in input_data])
 input_data = np.array(input_data)
 
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if isGhostNet:
     netType = "GhostNet"
     model = GhostNet(args.ratio1,args.ratio2)
     model.load_state_dict(torch.load('runs/model/ghostNet_{}_{}.pt'.format(args.ratio1,args.ratio2)))
-    model.eval()
-    acc,time_inf = testModelPyTorch(model, input_data, class_list_test_t)
 
 else:
     netType="ecladNet"
     model = Net()
     model.load_state_dict(torch.load('runs/model/ecladNet.pt'))
-    model.eval()
-    acc,time_inf = testModelPyTorch(model, input_data, class_list_test_t)
+
+
+model.to(device)
+model.eval()
+acc,time_inf = testModelPyTorch(model, input_data, class_list_test_t)
+
     
 
 

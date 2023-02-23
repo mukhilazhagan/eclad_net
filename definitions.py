@@ -170,7 +170,7 @@ def MSE(convs, idx_images=0):
     MSE = summation/count #dividing summation by total values to obtain average
     return MSE
     
-def testModelONNX(model,testset,labels_onehot):
+def testModelONNX(model,testset,labels_onehot,device):
     acc = 0
     correct, total = 0.0, 0.0
     inf_time = 0
@@ -178,7 +178,7 @@ def testModelONNX(model,testset,labels_onehot):
 
     tic = time.perf_counter()
     for img in testset:
-        outputs.append(model.run(None, {'input': np.reshape(img, (1, 3, 32, 32))})[0][0])
+        outputs.append(model.run(None, {'input': np.reshape(img, (1, 3, 32, 32).to(device)   )})[0][0])
     toc = time.perf_counter()
     inf_time = toc-tic
     print(f"Tested all test set in {inf_time:0.4f} seconds\n")
@@ -194,7 +194,7 @@ def testModelONNX(model,testset,labels_onehot):
 
 
 
-def testModelPyTorch(model,testset,labels_onehot):
+def testModelPyTorch(model,testset,labels_onehot,device):
     acc = 0
     correct, total = 0.0, 0.0
     inf_time = 0
@@ -203,7 +203,7 @@ def testModelPyTorch(model,testset,labels_onehot):
         tic = time.perf_counter()
         for img in testset:
             # Test false as no mse needed
-            outputs.append(model(torch.unsqueeze(torch.from_numpy(img),0)))
+            outputs.append(model(torch.unsqueeze(torch.from_numpy(img).to(device),0)))
         toc = time.perf_counter()
         inf_time = toc-tic
     print(f"Tested all test set in {toc-tic:0.4f} seconds\n")
