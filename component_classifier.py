@@ -11,6 +11,20 @@ import torch.optim as optim
 import warnings
 import time 
 import math
+import argparse
+
+
+parser = argparse.ArgumentParser(description='Process some integers.')
+
+parser.add_argument('--ratio1',help='ratio of ghost for first ghostmodule',type=int, default=2)
+parser.add_argument('--ratio2',help='ratio of ghost for second ghostmodule',type=int, default=2)
+parser.add_argument('--ghost',help='process ghost net',action='store_true', required=False, default=False)
+
+
+args = parser.parse_args()
+
+GhostType = args.ghost
+
 
 warnings.filterwarnings("ignore")
 plt.ion()   # interactive mode
