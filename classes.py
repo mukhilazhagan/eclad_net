@@ -144,6 +144,8 @@ class Net(nn.Module):
         # Ghost Module
         #self.conv2 = GhostModule(6, 16, 5)
         self.pool2 = nn.MaxPool2d(2, 2)
+
+        
         ## Output dim of conv layer is 16(nb_channels)*5*5(remaining dim of pictures)
         # Linear(in_features: int, out_features: int, bias: bool = True, device: Any | None = None, dtype: Any | None = None)
         self.fc1 = nn.Linear(24*5*5, 32)
