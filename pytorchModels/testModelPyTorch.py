@@ -38,17 +38,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if isGhostNet:
     netType = "GhostNet"
     model = GhostNet(args.ratio1,args.ratio2)
-    model.load_state_dict(torch.load('runs/model/ghostNet_{}_{}.pt'.format(args.ratio1,args.ratio2)))
+    model.load_state_dict(torch.load('runs/model/pytorch/ghostNet_{}_{}.pt'.format(args.ratio1,args.ratio2)))
 
 else:
     netType="ecladNet"
     model = Net()
-    model.load_state_dict(torch.load('runs/model/ecladNet.pt'))
+    model.load_state_dict(torch.load('runs/model/pytorch/ecladNet.pt'))
 
 
 model.to(device)
 model.eval()
-acc,time_inf = testModelPyTorch(model, input_data, class_list_test_t)
+acc,time_inf = testModelPyTorch(model, input_data, class_list_test_t,device)
 
     
 
